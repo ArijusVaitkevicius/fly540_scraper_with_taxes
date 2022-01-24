@@ -67,7 +67,7 @@ def flights_scraper(dep_iata, arr_iata, cur, dep_date, ret_date):
     url_with_indexes = []
 
     # Generates URL by variables.
-    url = f"https://www.fly540.com/flights/nairobi-to-mombasa?isoneway=0&depairportcode={dep_iata}" \
+    url = f"https://www.fly540.com/flights/?isoneway=0&depairportcode={dep_iata}" \
           f"&arrvairportcode={arr_iata}&date_from={dep_date.strftime('%a')}%2C+{str(int(dep_date.strftime('%d')))}" \
           f"+{dep_date.strftime('%b')}+{dep_date.strftime('%Y')}&date_to={ret_date.strftime('%a')}%2C+" \
           f"{str(int(ret_date.strftime('%d')))}+{ret_date.strftime('%b')}+{ret_date.strftime('%Y')}" \

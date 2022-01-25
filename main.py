@@ -249,25 +249,36 @@ def main():
 
     data = []
 
+    def get_result(result):
+        data.extend(result)
+        
     try:
         # Sets max 'workers' number depending on the amount of arguments and CPU capability.
-        workers = len(url_with_indexes) if len(url_with_indexes) < cpu_count() - 1 else cpu_count() - 1
-        pool = Pool(workers)
+        if len(url_with_indexes) < cpu_count():
+            workers = len(url_with_indexes)
+            pool = Pool(workers)
+            for args in url_with_indexes:
+                pool.apply_async(flight_details_scraper, args=(args[0], args[1], args[2],), callback=get_result)
+            pool.close()
+            pool.join()
+            log('INFO', 'Flight summary page was successfully scraped in one round.')
+        else:
+            workers = cpu_count()
+            pool = Pool(workers)
+            for args in url_with_indexes[:workers]:
+                pool.apply_async(flight_details_scraper, args=(args[0], args[1], args[2],), callback=get_result)
+            pool.close()
+            pool.join()
 
-        # This loop calls function many times with different arguments and appends returned data to data list.
-        for args in url_with_indexes:
-            data.append(pool.apply_async(flight_details_scraper, args=(args[0], args[1], args[2],)))
-        pool.close()
-        pool.join()
-        
-        log('INFO', 'Flight summary page was successfully scraped.')
+            new_workers = len(url_with_indexes[workers:])
+            pool = Pool(new_workers)
+            for args in url_with_indexes[workers:]:
+                pool.apply_async(flight_details_scraper, args=(args[0], args[1], args[2],), callback=get_result)
+            pool.close()
+            pool.join()
+            log('INFO', 'Flight summary page was successfully scraped in two rounds.')
     except:
-        log('Error', 'Failed to scrape flight summary page.')
-
-    final_data = []
-
-    for r in data:  # Gets data from returned objects.
-        final_data.extend(r.get())
+        log('Error', 'Failed to scrape flight page.')
 
     # Saves collected data to result.csv.
     data_frame = pd.DataFrame(final_data, columns=['outbound_departure_airport',
@@ -280,7 +291,8 @@ def main():
                                                    'inbound_arrival_time',
                                                    'total_price',
                                                    'taxes'])
-
+    
+    sorted_df = data_frame.sort_values(['outbound_departure_time', 'inbound_departure_time'])
     file_exists = os.path.isfile('result.csv')  # Checks or such file exist. If not, set header=True.
     header = False
     if not file_exists:
@@ -288,7 +300,7 @@ def main():
 
     try:
         # noinspection PyTypeChecker
-        data_frame.to_csv('result.csv', mode='a', sep=';', index=False, header=header)
+        sorted_df.to_csv('result.csv', mode='a', sep=';', index=False, header=header)
         log('INFO', f'Data successfully wrote to result.csv')
     except:
         log('Error', f'Failed to write data to csv.')
